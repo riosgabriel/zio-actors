@@ -6,7 +6,7 @@ import BuildInfoKeys._
 object BuildHelper {
   private val Scala212        = "2.12.10"
   private val Scala213        = "2.13.1"
-  private val SilencerVersion = "1.6.0"
+  private val SilencerVersion = "1.7.1"
 
   private val stdOptions = Seq(
     "-encoding",
@@ -58,7 +58,7 @@ object BuildHelper {
           "-opt:l:inline",
           "-opt-inline-from:<source>"
         ) ++ stdOptsUpto212
-      case _             =>
+      case _ =>
         Seq("-Xexperimental") ++ stdOptsUpto212
     }
 
@@ -77,7 +77,7 @@ object BuildHelper {
       scalacOptions := stdOptions ++ extraOptions(scalaVersion.value),
       libraryDependencies ++=
         Seq(
-          ("com.github.ghik"                % "silencer-lib"    % SilencerVersion % Provided)
+          ("com.github.ghik" % "silencer-lib" % SilencerVersion % Provided)
             .cross(CrossVersion.full),
           compilerPlugin(("com.github.ghik" % "silencer-plugin" % SilencerVersion).cross(CrossVersion.full)),
           compilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3")
