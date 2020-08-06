@@ -213,47 +213,66 @@ jobs:
       - <<: *scala_212
       - <<: *jdk_8
 
-  test_212_jdk8_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_212
-      - <<: *jdk_8
+  test:
+    parameters:
+      scala:
+        type: string
+      jdk:
+        type: string
+    resource_class: small
+    docker:
+      - image: circleci/openjdk:<<parameters.jdk>>
+    steps:
+      - checkout
+      - <<: *load_cache
+      - run:
+          name: Run tests
+          command: |
+              ./sbt reload
+              ./sbt ++<<parameters.scala>>! test
+      - <<: *save_cache
 
-  test_213_jdk8_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_213
-      - <<: *jdk_8
-
-  test_dotty_jdk8_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_dotty
-      - <<: *jdk_8
-
-  test_212_jdk11_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_212
-      - <<: *jdk_11
-
-  test_213_jdk11_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_213
-      - <<: *jdk_11
-
-  test_dotty_jdk11_jvm:
-    <<: *test
-    <<: *machine_ubuntu
-    environment:
-      - <<: *scala_dotty
-      - <<: *jdk_11
+#  test_212_jdk8_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_212
+#      - <<: *jdk_8
+#
+#  test_213_jdk8_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_213
+#      - <<: *jdk_8
+#
+#  test_dotty_jdk8_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_dotty
+#      - <<: *jdk_8
+#
+#  test_212_jdk11_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_212
+#      - <<: *jdk_11
+#
+#  test_213_jdk11_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_213
+#      - <<: *jdk_11
+#
+#  test_dotty_jdk11_jvm:
+#    <<: *test
+#    <<: *machine_ubuntu
+#    environment:
+#      - <<: *scala_dotty
+#      - <<: *jdk_11
 
   release:
     <<: *release
@@ -281,44 +300,36 @@ workflows:
             - lint
           filters:
             <<: *filter_tags
-      - test_212_jdk8_jvm:
+
+      - test:
+          name: test-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
+          matrix:
+            parameters:
+              scala: ["2.12.11", "2.13.3"]
+              jdk: ["8", "11"]
           requires:
             - lint
           filters:
             <<: *filter_tags
-      - test_213_jdk8_jvm:
-          requires:
-            - lint
-          filters:
-            <<: *filter_tags
-      - test_212_jdk11_jvm:
-          requires:
-            - lint
-          filters:
-            <<: *filter_tags
-      - test_213_jdk11_jvm:
-          requires:
-            - lint
-          filters:
-            <<: *filter_tags
-      - release:
-          context: Sonatype2
-          requires:
-            - test_212_jdk8_jvm
-            - test_212_jdk11_jvm
-            - test_213_jdk8_jvm
-            - test_213_jdk11_jvm
-            - mdoc
-          filters:
-            <<: *filter_tags
-            branches:
-              only:
-                - master
-      - microsite:
-          context: Website
-          requires:
-            - release
-          filters:
-            <<: *filter_tags
-            branches:
-              ignore: /.*/
+
+#      - release:
+#          context: Sonatype2
+#          requires:
+#            - test_212_jdk8_jvm
+#            - test_212_jdk11_jvm
+#            - test_213_jdk8_jvm
+#            - test_213_jdk11_jvm
+#            - mdoc
+#          filters:
+#            <<: *filter_tags
+#            branches:
+#              only:
+#                - master
+#      - microsite:
+#          context: Website
+#          requires:
+#            - release
+#          filters:
+#            <<: *filter_tags
+#            branches:
+#              ignore: /.*/
