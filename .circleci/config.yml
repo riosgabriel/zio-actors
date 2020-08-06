@@ -119,6 +119,7 @@ mdoc: &mdoc
     - run:
         name: Generate documentation
         command: |
+          ./sbt reload
           ./sbt doc
           ./sbt ++${SCALA_VERSION}! docs/mdoc
     - <<: *save_cache
