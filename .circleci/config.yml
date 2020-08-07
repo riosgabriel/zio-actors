@@ -6,48 +6,19 @@ scala_212: &scala_212
 scala_213: &scala_213
   SCALA_VERSION: 2.13.3
 
-scala_dotty: &scala_dotty
-  SCALA_VERSION: 0.20.0-RC1
-
 jdk_8: &jdk_8
   JDK_VERSION: 8
-
-jdk_11: &jdk_11
-  JDK_VERSION: 11
 
 machine_ubuntu: &machine_ubuntu
   machine:
     image: ubuntu-1604:201903-01
 
-install_jdk: &install_jdk
-  - run:
-      name: Install JDK
-      command: |
-        while $(ps aux | grep -i ' apt ' | grep -v grep > /dev/null); do sleep 1; done # Wait for apt to be ready
-
-        sudo rm /etc/apt/sources.list.d/*
-        sudo tee /etc/apt/sources.list > /dev/null \<< 'EOF'
-        deb http://mirror.math.princeton.edu/pub/ubuntu/ xenial main universe
-        deb http://mirror.math.princeton.edu/pub/ubuntu/ xenial-updates main universe
-        deb http://mirror.math.princeton.edu/pub/ubuntu/ xenial-backports main universe
-        deb http://mirror.math.princeton.edu/pub/ubuntu/ xenial-security main restricted universe
-        EOF
-
-        if [ $JDK_VERSION == 11 ]; then
-          wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | sudo apt-key add -
-          sudo add-apt-repository https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/ -y
-        fi
-        sudo apt update
-        if [ $JDK_VERSION == 11 ]; then
-          sudo apt install -y adoptopenjdk-11-hotspot
-        elif [ $JDK_VERSION == 8 ]; then
-          sudo apt install -y openjdk-8-jdk
-        fi
-        java -version
-
 load_cache: &load_cache
   - restore_cache:
-      key: sbt-actors-cache-v2
+      keys:
+        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
+        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-master-
 
 clean_cache: &clean_cache
   - run:
@@ -59,7 +30,7 @@ clean_cache: &clean_cache
 
 save_cache: &save_cache
   - save_cache:
-      key: sbt-actors-cache-v2
+      key: sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
       paths:
           - "~/.ivy2/cache"
           - "~/.sbt"
@@ -93,16 +64,6 @@ filter_tags: &filter_tags
   tags:
     only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
-
-compile: &compile
-  steps:
-    - checkout
-    - <<: *load_cache
-    - run:
-        name: Compile code
-        command: ./sbt ++${SCALA_VERSION}! compile
-    - <<: *save_cache
-
 lint: &lint
   steps:
     - checkout
@@ -122,16 +83,6 @@ mdoc: &mdoc
           ./sbt reload
           ./sbt doc
           ./sbt ++${SCALA_VERSION}! docs/mdoc
-    - <<: *save_cache
-
-test: &test
-  steps:
-    - checkout
-    - <<: *load_cache
-    - <<: *install_jdk
-    - run:
-        name: Run tests
-        command: ./sbt ++${SCALA_VERSION}! test
     - <<: *save_cache
 
 release: &release
