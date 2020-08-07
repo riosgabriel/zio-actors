@@ -62,32 +62,7 @@ install_nodejs: &install_nodejs
 
 filter_tags: &filter_tags
   tags:
-    only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
-
-lint: &lint
-  steps:
-    - checkout
-    - <<: *load_cache
-    - run:
-        name: Lint code
-        command: ./sbt ++${SCALA_VERSION}! check
-    - <<: *save_cache
-    - persist_to_workspace:
-        root: ~/
-        paths:
-          - .sbt/
-
-mdoc: &mdoc
-  steps:
-    - checkout
-    - <<: *load_cache
-    - run:
-        name: Generate documentation
-        command: |
-          ./sbt reload
-          ./sbt doc
-          ./sbt ++${SCALA_VERSION}! docs/mdoc
-    - <<: *save_cache
+    only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/`
 
 release: &release
   steps:
@@ -166,30 +141,22 @@ jobs:
           paths:
             - project/
             - .sbt/
-
   mdoc:
-    <<: *mdoc
-    <<: *machine_ubuntu
+    resource_class: small
     environment:
       - <<: *scala_212
-      - <<: *jdk_8
-
-  compile:
-    parameters:
-      scala:
-        type: string
-      jdk:
-        type: string
-    resource_class: small
     docker:
-      - image: circleci/openjdk:<<parameters.jdk>>
+      - image: circleci/openjdk:8
     steps:
       - attach_workspace:
           at: ~/
       - <<: *load_cache
       - run:
-          name: Compile code
-          command: ./sbt ++<<parameters.scala>>! compile
+          name: Generate documentation
+          command: |
+            ./sbt reload
+            ./sbt doc
+            ./sbt ++${SCALA_VERSION}! docs/mdoc
       - <<: *save_cache
 
   test:
@@ -240,17 +207,6 @@ workflows:
           filters:
             <<: *filter_tags
 
-      - compile:
-          name: compile-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
-          matrix:
-            parameters:
-              scala: ["2.12.11", "2.13.3"]
-              jdk: ["8", "11"]
-          requires:
-            - lint
-          filters:
-            <<: *filter_tags
-
       - test:
           name: test-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
           matrix:
@@ -258,7 +214,7 @@ workflows:
               scala: ["2.12.11", "2.13.3"]
               jdk: ["8", "11"]
           requires:
-            - compile-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
+            - lint
           filters:
             <<: *filter_tags
 
