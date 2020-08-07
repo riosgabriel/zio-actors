@@ -275,7 +275,7 @@ workflows:
           name: compile-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
           matrix:
             parameters:
-              scala: ["2.12.11", "2.13.3", "0.20.0-RC1"]
+              scala: ["2.12.11", "2.13.3"]
               jdk: ["8", "11"]
           requires:
             - lint
@@ -286,10 +286,9 @@ workflows:
           name: test-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
           matrix:
             parameters:
-              scala: ["2.12.11", "2.13.3", "0.20.0-RC1"]
+              scala: ["2.12.11", "2.13.3"]
               jdk: ["8", "11"]
           requires:
-            - lint
             - compile-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
           filters:
             <<: *filter_tags
