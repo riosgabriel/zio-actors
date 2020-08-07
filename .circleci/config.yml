@@ -72,6 +72,10 @@ lint: &lint
         name: Lint code
         command: ./sbt ++${SCALA_VERSION}! check
     - <<: *save_cache
+    - persist_to_workspace:
+        root: ~/
+        paths:
+          - .sbt/
 
 mdoc: &mdoc
   steps:
@@ -145,11 +149,23 @@ microsite: &microsite
 
 jobs:
   lint:
-    <<: *lint
-    <<: *machine_ubuntu
+    resource_class: small
     environment:
       - <<: *scala_212
-      - <<: *jdk_8
+    docker:
+      - image: circleci/openjdk:8
+    steps:
+      - checkout
+      - <<: *load_cache
+      - run:
+          name: Lint code
+          command: ./sbt ++${SCALA_VERSION}! check
+      - <<: *save_cache
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/
+            - .sbt/
 
   mdoc:
     <<: *mdoc
@@ -168,7 +184,8 @@ jobs:
     docker:
       - image: circleci/openjdk:<<parameters.jdk>>
     steps:
-      - checkout
+      - attach_workspace:
+          at: ~/
       - <<: *load_cache
       - run:
           name: Compile code
@@ -185,7 +202,8 @@ jobs:
     docker:
       - image: circleci/openjdk:<<parameters.jdk>>
     steps:
-      - checkout
+      - attach_workspace:
+          at: ~/
       - <<: *load_cache
       - run:
           name: Run tests
