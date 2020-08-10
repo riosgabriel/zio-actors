@@ -13,52 +13,72 @@ machine_ubuntu: &machine_ubuntu
   machine:
     image: ubuntu-1604:201903-01
 
-load_cache: &load_cache
-  - restore_cache:
-      keys:
-        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
-        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
-        - sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-master-
+commands:
+  save-cache:
+    parameters:
+      scala:
+        type: string
+        default: "2.12.12"
+      jdk:
+        type: string
+        default: "8"
+    steps:
+      - save_cache:
+          key: sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ << parameters.scala >> }}-{{ << parameters.jdk >> }}-{{ checksum "build.sbt" }}
+          paths:
+            - "~/.ivy2/cache"
+            - "~/.sbt"
+            - "~/.m2"
+            - "~/.cache"
+            - "~/website/node_modules"
 
-clean_cache: &clean_cache
-  - run:
-      name: Clean unwanted files from cache
-      command: |
-        rm -fv $HOME/.ivy2/.sbt.ivy.lock
-        find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
-        find $HOME/.sbt        -name "*.lock"               -print -delete
+  load-cache:
+    parameters:
+      scala:
+        type: string
+        default: "2.12.12"
+      jdk:
+        type: string
+        default: "8"
+    steps:
+      - restore_cache:
+          keys:
+            - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ << parameters.scala >> }}-{{ << parameters.jdk >> }}-{{ checksum "build.sbt" }}
+            - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+            - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-master-
 
-save_cache: &save_cache
-  - save_cache:
-      key: sbt-actors-cache-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
-      paths:
-          - "~/.ivy2/cache"
-          - "~/.sbt"
-          - "~/.m2"
-          - "~/.cache"
-          - "~/website/node_modules"
+  clean-cache:
+    steps:
+      - run:
+          name: Clean unwanted files from cache
+          command: |
+            rm -fv $HOME/.ivy2/.sbt.ivy.lock
+            find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+            find $HOME/.sbt        -name "*.lock"               -print -delete
 
-install_yarn: &install_yarn
-  - run:
-      name: Install Yarn
-      command: |
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 78BD65473CB3BD13
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5DC22404A6F9F1CA
-        curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-        sudo bash -c 'echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list'
-        sudo apt update && sudo apt install yarn -y
-        yarn policies set-version
-        yarn -v
+  install_nodejs:
+    steps:
+      - run:
+          name: Install node.js
+          command: |
+            export NVM_DIR="/opt/circleci/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm install
+            nvm use
+            node -v
 
-install_nodejs: &install_nodejs
-  - run:
-      name: Install node.js
-      command: |
-        export NVM_DIR="/opt/circleci/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install
-        nvm use
-        node -v
+  install_yarn:
+    steps:
+      - run:
+          name: Install Yarn
+          command: |
+            sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 78BD65473CB3BD13
+            sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5DC22404A6F9F1CA
+            curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+            sudo bash -c 'echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list'
+            sudo apt update && sudo apt install yarn -y
+            yarn policies set-version
+            yarn -v
 
 filter_tags: &filter_tags
   tags:
@@ -70,7 +90,7 @@ release: &release
       - run:
           name: Fetch git tags
           command: git fetch --tags
-      - <<: *load_cache
+      - load-cache
       - run: 
           name: Write sonatype credentials
           command: echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"${SONATYPE_USER}\", \"${SONATYPE_PASSWORD}\")" > ~/.sbt/1.0/sonatype.sbt
@@ -100,9 +120,9 @@ microsite: &microsite
           fingerprints:
             - "d5:5f:d3:70:34:b3:1e:0e:fb:63:97:fa:63:63:b0:8a"
       - checkout
-      - <<: *load_cache
-      - <<: *install_nodejs
-      - <<: *install_yarn
+      - load-cache
+      - install_nodejs
+      - install_yarn
       - run:
           name: Publishing website
           command: |
@@ -119,8 +139,8 @@ microsite: &microsite
             node -v
             ./sbt ++${SCALA_VERSION}! docs/docusaurusCreateSite
             ./sbt ++${SCALA_VERSION}! docs/docusaurusPublishGhpages
-      - <<: *clean_cache
-      - <<: *save_cache
+      - clean-cache
+      - save-cache
 
 jobs:
   lint:
@@ -131,33 +151,18 @@ jobs:
       - image: circleci/openjdk:8
     steps:
       - checkout
-      - <<: *load_cache
+      - load-cache
       - run:
           name: Lint code
-          command: ./sbt ++${SCALA_VERSION}! check
-      - <<: *save_cache
+          command: |
+            ./sbt reload
+            ./sbt ++${SCALA_VERSION}! check
+      - save-cache
       - persist_to_workspace:
           root: ~/
           paths:
             - project/
             - .sbt/
-  mdoc:
-    resource_class: small
-    environment:
-      - <<: *scala_212
-    docker:
-      - image: circleci/openjdk:8
-    steps:
-      - attach_workspace:
-          at: ~/
-      - <<: *load_cache
-      - run:
-          name: Generate documentation
-          command: |
-            ./sbt reload
-            ./sbt doc
-            ./sbt ++${SCALA_VERSION}! docs/mdoc
-      - <<: *save_cache
 
   test:
     parameters:
@@ -171,13 +176,30 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/
-      - <<: *load_cache
+      - load-cache
       - run:
           name: Run tests
           command: |
-              ./sbt reload
-              ./sbt ++<< parameters.scala >>! test
-      - <<: *save_cache
+            ./sbt reload
+            ./sbt ++<< parameters.scala >>! test
+      - save-cache
+
+  mdoc:
+    resource_class: small
+    environment:
+      - <<: *scala_212
+    docker:
+      - image: circleci/openjdk:8
+    steps:
+      - attach_workspace:
+          at: ~/
+      - load-cache
+      - run:
+          name: Generate documentation
+          command: |
+            ./sbt doc
+            ./sbt ++${SCALA_VERSION}! docs/mdoc
+      - save-cache
 
   release:
     <<: *release
@@ -201,12 +223,6 @@ workflows:
           filters:
             <<: *filter_tags
 
-      - mdoc:
-          requires:
-            - lint
-          filters:
-            <<: *filter_tags
-
       - test:
           name: test-scala-<< matrix.scala >>-jdk-<< matrix.jdk >>
           matrix:
@@ -215,6 +231,12 @@ workflows:
               jdk: ["8", "11"]
           requires:
             - lint
+          filters:
+            <<: *filter_tags
+
+      - mdoc:
+          requires:
+            - test
           filters:
             <<: *filter_tags
 
