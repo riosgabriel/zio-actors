@@ -167,7 +167,7 @@ jobs:
         type: string
     resource_class: small
     docker:
-      - image: circleci/openjdk:<<parameters.jdk>>
+      - image: circleci/openjdk:<< parameters.jdk >>
     steps:
       - attach_workspace:
           at: ~/
@@ -176,7 +176,7 @@ jobs:
           name: Run tests
           command: |
               ./sbt reload
-              ./sbt ++<<parameters.scala>>! test
+              ./sbt ++<< parameters.scala >>! test
       - <<: *save_cache
 
   release:
@@ -208,7 +208,7 @@ workflows:
             <<: *filter_tags
 
       - test:
-          name: test-scala-<< matrix.scala >>-jdk-<<matrix.jdk>>
+          name: test-scala-<< matrix.scala >>-jdk-<< matrix.jdk >>
           matrix:
             parameters:
               scala: ["2.12.11", "2.13.3"]
@@ -228,11 +228,12 @@ workflows:
             branches:
               only:
                 - master
-#      - microsite:
-#          context: Website
-#          requires:
-#            - release
-#          filters:
-#            <<: *filter_tags
-#            branches:
-#              ignore: /.*/
+
+      - microsite:
+          context: Website
+          requires:
+            - release
+          filters:
+            <<: *filter_tags
+            branches:
+              ignore: /.*/
