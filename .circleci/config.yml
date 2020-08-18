@@ -21,6 +21,7 @@ commands:
           key: sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
           paths:
             - "~/.ivy2/cache"
+            - "~/project/target"
             - "~/.sbt"
             - "~/.m2"
             - "~/.cache"
