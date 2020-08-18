@@ -21,7 +21,6 @@ commands:
           key: sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
           paths:
             - "~/.ivy2/cache"
-            - "~/project/target"
             - "~/.sbt"
             - "~/.m2"
             - "~/.cache"
@@ -107,7 +106,8 @@ microsite: &microsite
       - add_ssh_keys:
           fingerprints:
             - "d5:5f:d3:70:34:b3:1e:0e:fb:63:97:fa:63:63:b0:8a"
-      - checkout
+      - attach_workspace:
+          at: ~/
       - load-cache
       - install_nodejs
       - install_yarn
@@ -134,7 +134,7 @@ jobs:
   lint:
     resource_class: small
     environment:
-      - <<: *scala_212
+      - <<: *scala_213
     docker:
       - image: circleci/openjdk:8
     steps:
@@ -171,11 +171,12 @@ jobs:
             ./sbt reload
             ./sbt ++<< parameters.scala >>! test
       - save-cache
+      
 
   mdoc:
     resource_class: small
     environment:
-      - <<: *scala_212
+      - <<: *scala_213
     docker:
       - image: circleci/openjdk:8
     steps:
@@ -200,7 +201,7 @@ jobs:
     <<: *microsite
     <<: *machine_ubuntu
     environment:
-      - <<: *scala_212
+      - <<: *scala_213
       - <<: *jdk_8
 
 workflows:
