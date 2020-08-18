@@ -16,15 +16,9 @@ machine_ubuntu: &machine_ubuntu
 commands:
   save-cache:
     parameters:
-      scala:
-        type: string
-        default: "2.12.12"
-      jdk:
-        type: string
-        default: "8"
     steps:
       - save_cache:
-          key: sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ << parameters.scala >> }}-{{ << parameters.jdk >> }}-{{ checksum "build.sbt" }}
+          key: sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
           paths:
             - "~/.ivy2/cache"
             - "~/.sbt"
@@ -33,17 +27,10 @@ commands:
             - "~/website/node_modules"
 
   load-cache:
-    parameters:
-      scala:
-        type: string
-        default: "2.12.12"
-      jdk:
-        type: string
-        default: "8"
     steps:
       - restore_cache:
           keys:
-            - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ << parameters.scala >> }}-{{ << parameters.jdk >> }}-{{ checksum "build.sbt" }}
+            - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ checksum "build.sbt" }}
             - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
             - sbt-actors-{{ .Environment.CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-master-
 
